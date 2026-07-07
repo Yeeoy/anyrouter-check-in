@@ -60,8 +60,25 @@ jobs:
 
     - name: 安装 CloakBrowser
       run: |
+        set +e
         uv run python -m cloakbrowser install
-        echo "✅ CloakBrowser 安装完成"
+        install_exit=$?
+        set -e
+
+        browser_binary="$(find "${HOME}/.cloakbrowser" -type f -name chrome -perm -111 2>/dev/null | head -n 1 || true)"
+        if [ -n "${browser_binary}" ]; then
+          echo "✅ CloakBrowser 安装完成: ${browser_binary}"
+          if [ "${install_exit}" -ne 0 ]; then
+            echo "⚠️ 安装命令返回码 ${install_exit}，但检测到浏览器可执行文件，继续执行"
+          fi
+          exit 0
+        fi
+
+        echo "❌ CloakBrowser 安装失败，未检测到浏览器可执行文件"
+        if [ "${install_exit}" -eq 0 ]; then
+          exit 1
+        fi
+        exit "${install_exit}"
 
     - name: 恢复余额历史缓存
       uses: actions/cache@v5
