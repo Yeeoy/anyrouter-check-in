@@ -240,7 +240,20 @@ def get_user_info(client, headers, user_info_url: str):
 		response = client.get(user_info_url, headers=headers, timeout=30)
 
 		if response.status_code == 200:
-			data = response.json()
+			try:
+				data = response.json()
+			except json.JSONDecodeError:
+				content_type = response.headers.get('content-type', 'unknown')
+				body_preview = response.text.strip().replace('\n', ' ')[:120]
+				if not body_preview:
+					body_preview = '<empty>'
+				return {
+					'success': False,
+					'error': (
+						f'Failed to get user info: Invalid JSON response '
+						f'(content-type={content_type}, body={body_preview})'
+					),
+				}
 			if data.get('success'):
 				user_data = data.get('data', {})
 				quota = round(user_data.get('quota', 0) / 500000, 2)
@@ -435,7 +448,6 @@ def run_check_in_requests(
 				'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
 				'Accept': 'application/json, text/plain, */*',
 				'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-				'Accept-Encoding': 'gzip, deflate, br, zstd',
 				'Referer': provider_config.domain,
 				'Origin': provider_config.domain,
 				'Connection': 'keep-alive',
